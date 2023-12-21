@@ -12,24 +12,19 @@ from config import TOKEN
 objects_lst = 'https://klevoemestechko.ru/catalog/api/spots/'
 response_objects = requests.get(objects_lst)
 response_objects = response_objects.json()
-# создание списка с регионами
-districts = list(set([el['region'] for el in response_objects]))
 # создание списка с обьектами
 places = [el['name'] for el in response_objects]
 
-objects_main_images = 'https://klevoemestechko.ru/catalog/api/main_images/'
-response_objects_main_images = requests.get(objects_main_images)
-response_objects_main_images = response_objects_main_images.json()
-
-objects_gallery = 'https://klevoemestechko.ru/catalog/api/spot_images/'
-response_objects_gallery = requests.get(objects_gallery)
-response_objects_gallery = response_objects_gallery.json()
+districts_lst = 'https://klevoemestechko.ru/catalog/api/regions/'
+response_districts = requests.get(districts_lst)
+response_districts = response_districts.json()
+districts = [el['region'] for el in response_districts]
 
 bot = telebot.TeleBot(TOKEN)
 
 # раговорные фразы
-yes = ['да', 'конечно', 'да.', 'Да', 'Да.', 'Конечно', 'Ещё бы']
-no = ['нет', 'Нет', 'не', 'Не', 'Неа']
+yes = ['да', 'конечно', 'да.', 'Да', 'Да.', 'Конечно', 'Ещё бы', '1', 'yes', 'Yes']
+no = ['нет', 'Нет', 'не', 'Не', 'Неа', '0', 'No', 'no']
 hi = ['Привет', 'Где отдохнуть?', ' Подскажи, куда прокатиться на выходные?',
       'Куда поехать', 'Куда поехать?', 'Куда поехать на рыбалку?']
 do = ['Как дела?', 'как дела?', 'Как дела', 'как дела']
@@ -39,8 +34,13 @@ dist_lst = []
 
 @bot.message_handler(commands=['start'])
 def start(message):
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=1)
+    yes_button = types.KeyboardButton('Да')
+    no_button = types.KeyboardButton('Нет')
+    markup.add(yes_button)
+    markup.add(no_button)
     bot.send_message(message.chat.id, f'Привет! \u270B Хочешь отправиться на рыбалку?',
-                     parse_mode='Markdown')
+                     parse_mode='Markdown', reply_markup=markup)
 
 
 @bot.message_handler(commands=['help'])
@@ -89,9 +89,11 @@ def get_user_text(message):
         back = types.KeyboardButton('Назад')
         markup.add(back)
         for el in response_objects:
-            if el['region'] == message.text:
-                button = types.KeyboardButton(el['name'])
-                markup.add(button)
+            for i in response_districts:
+                if i['id'] == el['region']:
+                    if i['region'] == message.text:
+                        button = types.KeyboardButton(el['name'])
+                        markup.add(button)
 
         # отправка сообщения
         bot.send_message(message.chat.id, 'Выберите место для рыбалки', reply_markup=markup)
@@ -112,14 +114,14 @@ def get_user_text(message):
                 description = html2text.html2text(description)
 
                 # фото места
-                for i in response_objects_main_images:
-                    if i['spot'] == id_object:
-                        image = i['image']
+                image = el['img']
 
                 # координаты места
                 cords = f"{el['lat']} {el['lon']}"
 
-                district = el['region']
+                for i in response_districts:
+                    if i['id'] == el['region']:
+                        district = i['region']
 
         dist_lst.append(district)
 
